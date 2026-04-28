@@ -19,6 +19,7 @@ public class GameManager : MonoBehaviour
 	private Player currentPlayer;
 	private Player currentTarget;
 	public List<Tile> TilesQueueForPlayer = new List<Tile>();
+	private List<Tile> highlightedMovementTiles = new List<Tile>();
 	public Vector3 prePosition;
 	public int preJumpStype;
 	public List<Tile> map = new List<Tile>();
@@ -92,6 +93,7 @@ public class GameManager : MonoBehaviour
 				{
 					currentTile = previousTile;
 					previousTile = null;
+					ClearMovementHighlights();
 					currentPlayer.MovingAnimation(currentPlayer.faceDirection, currentTile, currentTile);
 					//currentPlayer.HighlightAttack();
 					//choosingTarget = true;
@@ -215,12 +217,17 @@ public class GameManager : MonoBehaviour
 					currentPlayer = players.Where(x => x.transform.position.x == cursor.transform.position.x && x.transform.position.y == cursor.transform.position.y).First();
 					previousTile = currentTile;
 					originTile = currentTile;
+					highlightedMovementTiles = Highlight.Movement(originTile, currentPlayer.movement, new List<Tile>());
+					OnHighlightTiles(highlightedMovementTiles, true);
 				}
 			}
 			else if (originTile != currentTile)
 			{
-				TilesQueueForPlayer = Highlight.FindPath(originTile, currentTile, new List<Tile>());
-				GetMovingDirection();
+				if (highlightedMovementTiles.Contains(currentTile))
+				{
+					TilesQueueForPlayer = Highlight.FindPath(originTile, currentTile, new List<Tile>());
+					GetMovingDirection();
+				}
 			}
 		}
 	}
@@ -242,5 +249,11 @@ public class GameManager : MonoBehaviour
 		{
 			tiles[i].Highlight(status);
 		}
+	}
+
+	private void ClearMovementHighlights()
+	{
+		OnHighlightTiles(highlightedMovementTiles, false);
+		highlightedMovementTiles = new List<Tile>();
 	}
 }
