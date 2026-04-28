@@ -27,6 +27,7 @@ public class GameManager : MonoBehaviour
 	private Camera mainCamera;
 	private bool choosingTarget;
 	public bool attacking;
+	private const float mouseTileSelectDistance = 0.8f;
 
 
 
@@ -64,6 +65,7 @@ public class GameManager : MonoBehaviour
 		}
 
 		KeyControll();
+		MouseControll();
 
 		IncreateFrameCount();
 	}
@@ -130,9 +132,14 @@ public class GameManager : MonoBehaviour
 
 	private void GetCursorNextMove(int direction)
 	{
-		cursor.transform.position = cursorNextMove[direction];
+		SetCursorTile(map.Where(x => x.transform.position == cursorNextMove[direction]).First());
+	}
+
+	private void SetCursorTile(Tile tile)
+	{
+		cursor.transform.position = tile.transform.position;
 		MoveCamera(cursor.transform.position);
-		currentTile = map.Where(x => x.transform.position == cursor.transform.position).First();
+		currentTile = tile;
 		for (int i = 0; i < 4; i++)
 		{
 			if (currentTile.neighbours[i] != null)
@@ -198,30 +205,61 @@ public class GameManager : MonoBehaviour
 		}
 		else if (Input.GetKeyDown(KeyCode.Space))
 		{
-			if (choosingTarget)
+			HandleSelectionAndMovement();
+		}
+	}
+
+	private void MouseControll()
+	{
+		Debug.Log("MouseControll() running");
+		if (!Input.GetMouseButtonDown(0))
+			return;
+
+		Debug.Log("Left click detected");
+		Debug.Log("Mouse screen position: " + Input.mousePosition);
+		Vector3 mouseWorldPosition = mainCamera.ScreenToWorldPoint(Input.mousePosition);
+		mouseWorldPosition.z = 0;
+		Debug.Log("Mouse world position: " + mouseWorldPosition);
+		Tile clickedTile = map.OrderBy(x => Vector3.Distance(x.transform.position.Vector2(), mouseWorldPosition.Vector2())).First();
+		Debug.Log("Nearest tile found: " + (clickedTile != null));
+		if (clickedTile != null)
+			Debug.Log("Nearest tile position: " + clickedTile.transform.position);
+		if (Vector3.Distance(clickedTile.transform.position.Vector2(), mouseWorldPosition.Vector2()) > mouseTileSelectDistance)
+			return;
+
+		SetCursorTile(clickedTile);
+		Debug.Log("Calling HandleSelectionAndMovement() from mouse input");
+		HandleSelectionAndMovement();
+	}
+
+	private void HandleSelectionAndMovement()
+	{
+		if (choosingTarget)
+		{
+			if (players.Where(x => x.currentTile() == currentTile).Count() > 0)
 			{
-				if (players.Where(x => x.currentTile() == currentTile).Count() > 0)
-				{
-					currentTarget = players.Where(x => x.currentTile() == currentTile).First();
-					StartCoroutine(Attacking());
-				}
-				else
-				{
-					Debug.Log("Invalid Tile!");
-				}
+				currentTarget = players.Where(x => x.currentTile() == currentTile).First();
+				StartCoroutine(Attacking());
 			}
-			else if (previousTile == null)
+			else
 			{
-				if (players.Where(x => x.transform.position.x == cursor.transform.position.x && x.transform.position.y == cursor.transform.position.y).Count() > 0)
-				{
-					currentPlayer = players.Where(x => x.transform.position.x == cursor.transform.position.x && x.transform.position.y == cursor.transform.position.y).First();
-					previousTile = currentTile;
-					originTile = currentTile;
-					highlightedMovementTiles = Highlight.Movement(originTile, currentPlayer.movement, new List<Tile>());
-					OnHighlightTiles(highlightedMovementTiles, true);
-				}
+				Debug.Log("Invalid Tile!");
 			}
-			else if (originTile != currentTile)
+		}
+		else if (previousTile == null)
+		{
+			if (players.Where(x => x.transform.position.x == currentTile.transform.position.x && x.transform.position.y == currentTile.transform.position.y).Count() > 0)
+			{
+				currentPlayer = players.Where(x => x.transform.position.x == currentTile.transform.position.x && x.transform.position.y == currentTile.transform.position.y).First();
+				previousTile = currentTile;
+				originTile = currentTile;
+				highlightedMovementTiles = Highlight.Movement(originTile, currentPlayer.movement, new List<Tile>());
+				OnHighlightTiles(highlightedMovementTiles, true);
+			}
+		}
+		else if (originTile != currentTile)
+		{
+			if (highlightedMovementTiles.Contains(currentTile))
 			{
 				if (highlightedMovementTiles.Contains(currentTile))
 				{
