@@ -253,8 +253,11 @@ public class GameManager : MonoBehaviour
 		{
 			if (highlightedMovementTiles.Contains(currentTile))
 			{
-				TilesQueueForPlayer = Highlight.FindPath(originTile, currentTile, new List<Tile>());
-				GetMovingDirection();
+				if (highlightedMovementTiles.Contains(currentTile))
+				{
+					TilesQueueForPlayer = Highlight.FindPath(originTile, currentTile, new List<Tile>());
+					GetMovingDirection();
+				}
 			}
 		}
 	}
