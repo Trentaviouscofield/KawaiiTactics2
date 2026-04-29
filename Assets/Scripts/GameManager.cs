@@ -280,6 +280,19 @@ public class GameManager : MonoBehaviour
 			ConfirmCurrentOption();
 			return;
 		}
+		else if (currentTurnStep == UnitTurnStep.SelectUnit)
+		{
+			if (players.Where(x => x.transform.position.x == currentTile.transform.position.x && x.transform.position.y == currentTile.transform.position.y).Count() > 0)
+			{
+				currentPlayer = players.Where(x => x.transform.position.x == currentTile.transform.position.x && x.transform.position.y == currentTile.transform.position.y).First();
+				previousTile = currentTile;
+				originTile = currentTile;
+				currentTurnStep = UnitTurnStep.ChooseOption;
+				selectedOptionIndex = 0;
+				Debug.Log("Entered ChooseOption");
+			}
+			return;
+		}
 
 		if (choosingTarget)
 		{
@@ -291,17 +304,6 @@ public class GameManager : MonoBehaviour
 			else
 			{
 				Debug.Log("Invalid Tile!");
-			}
-		}
-		else if (previousTile == null && currentTurnStep == UnitTurnStep.SelectUnit)
-		{
-			if (players.Where(x => x.transform.position.x == currentTile.transform.position.x && x.transform.position.y == currentTile.transform.position.y).Count() > 0)
-			{
-				currentPlayer = players.Where(x => x.transform.position.x == currentTile.transform.position.x && x.transform.position.y == currentTile.transform.position.y).First();
-				previousTile = currentTile;
-				originTile = currentTile;
-				currentTurnStep = UnitTurnStep.ChooseOption;
-				selectedOptionIndex = 0;
 			}
 		}
 		else if (originTile != currentTile && currentTurnStep == UnitTurnStep.MoveSelectTarget)
@@ -321,12 +323,13 @@ public class GameManager : MonoBehaviour
 
 		int optionCount = System.Enum.GetValues(typeof(TurnOption)).Length;
 		selectedOptionIndex = (selectedOptionIndex + direction + optionCount) % optionCount;
-		Debug.Log("Selected option: " + ((TurnOption)selectedOptionIndex));
+		Debug.Log("Cycling options. Selected option: " + ((TurnOption)selectedOptionIndex));
 	}
 
 	private void ConfirmCurrentOption()
 	{
 		TurnOption selectedOption = (TurnOption)selectedOptionIndex;
+		Debug.Log("Confirming option: " + selectedOption);
 		if (selectedOption == TurnOption.Move)
 		{
 			currentTurnStep = UnitTurnStep.MoveSelectTarget;
