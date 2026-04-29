@@ -6,6 +6,23 @@ using UnityEngine;
 
 public class GameManager : MonoBehaviour
 {
+	public enum TurnSide
+	{
+		Player,
+		Enemy
+	}
+
+	public enum UnitTurnStep
+	{
+		StartTurn,
+		SelectUnit,
+		ChooseOption,
+		MoveSelectTarget,
+		ActionSelectTarget,
+		ChooseFacing,
+		EndTurn
+	}
+
 	public static GameManager Instance;
 	public float PlayerMoveSpeed;
 	public int FrameCount;
@@ -28,6 +45,10 @@ public class GameManager : MonoBehaviour
 	private bool choosingTarget;
 	public bool attacking;
 	private const float mouseTileSelectDistance = 0.8f;
+	public TurnSide activeTurnSide;
+	public UnitTurnStep currentTurnStep;
+	public bool hasMoved;
+	public bool hasActed;
 
 
 
@@ -38,6 +59,10 @@ public class GameManager : MonoBehaviour
 		PlayerMoveSpeed = 3.5f;
 		FrameCount = 0;
 		mapObject = transform.Find("mapObject").gameObject;
+		activeTurnSide = TurnSide.Player;
+		currentTurnStep = UnitTurnStep.SelectUnit;
+		hasMoved = false;
+		hasActed = false;
 	}
 	private void Start()
 	{
