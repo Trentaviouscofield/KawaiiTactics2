@@ -6,6 +6,30 @@ using UnityEngine;
 
 public class GameManager : MonoBehaviour
 {
+	public enum TurnSide
+	{
+		Player,
+		Enemy
+	}
+
+	public enum UnitTurnStep
+	{
+		StartTurn,
+		SelectUnit,
+		ChooseOption,
+		MoveSelectTarget,
+		ActionSelectTarget,
+		ChooseFacing,
+		EndTurn
+	}
+
+	private enum TurnOption
+	{
+		Move,
+		Attack,
+		Wait
+	}
+
 	public static GameManager Instance;
 	public float PlayerMoveSpeed;
 	public int FrameCount;
@@ -19,6 +43,7 @@ public class GameManager : MonoBehaviour
 	private Player currentPlayer;
 	private Player currentTarget;
 	public List<Tile> TilesQueueForPlayer = new List<Tile>();
+	private List<Tile> highlightedMovementTiles = new List<Tile>();
 	public Vector3 prePosition;
 	public int preJumpStype;
 	public List<Tile> map = new List<Tile>();
@@ -26,6 +51,12 @@ public class GameManager : MonoBehaviour
 	private Camera mainCamera;
 	private bool choosingTarget;
 	public bool attacking;
+	private const float mouseTileSelectDistance = 0.8f;
+	public TurnSide activeTurnSide;
+	public UnitTurnStep currentTurnStep;
+	public bool hasMoved;
+	public bool hasActed;
+	private int selectedOptionIndex;
 
 
 
@@ -36,6 +67,11 @@ public class GameManager : MonoBehaviour
 		PlayerMoveSpeed = 3.5f;
 		FrameCount = 0;
 		mapObject = transform.Find("mapObject").gameObject;
+		activeTurnSide = TurnSide.Player;
+		currentTurnStep = UnitTurnStep.SelectUnit;
+		hasMoved = false;
+		hasActed = false;
+		selectedOptionIndex = 0;
 	}
 	private void Start()
 	{
@@ -63,6 +99,7 @@ public class GameManager : MonoBehaviour
 		}
 
 		KeyControll();
+		MouseControll();
 
 		IncreateFrameCount();
 	}
@@ -91,11 +128,11 @@ public class GameManager : MonoBehaviour
 				if (TilesQueueForPlayer.Count == 0)
 				{
 					currentTile = previousTile;
-					previousTile = null;
+					ClearMovementHighlights();
 					currentPlayer.MovingAnimation(currentPlayer.faceDirection, currentTile, currentTile);
-					//currentPlayer.HighlightAttack();
-					//choosingTarget = true;
-					currentPlayer = null;
+					hasMoved = true;
+					currentTurnStep = UnitTurnStep.ChooseOption;
+					previousTile = currentPlayer.currentTile();
 				}
 			}
 			if (TilesQueueForPlayer.Count > 0) currentPlayer.MovingAnimation(currentPlayer.faceDirection, previousTile, TilesQueueForPlayer[0]);
@@ -128,9 +165,14 @@ public class GameManager : MonoBehaviour
 
 	private void GetCursorNextMove(int direction)
 	{
-		cursor.transform.position = cursorNextMove[direction];
+		SetCursorTile(map.Where(x => x.transform.position == cursorNextMove[direction]).First());
+	}
+
+	private void SetCursorTile(Tile tile)
+	{
+		cursor.transform.position = tile.transform.position;
 		MoveCamera(cursor.transform.position);
-		currentTile = map.Where(x => x.transform.position == cursor.transform.position).First();
+		currentTile = tile;
 		for (int i = 0; i < 4; i++)
 		{
 			if (currentTile.neighbours[i] != null)
@@ -196,32 +238,114 @@ public class GameManager : MonoBehaviour
 		}
 		else if (Input.GetKeyDown(KeyCode.Space))
 		{
-			if (choosingTarget)
+			HandleSelectionAndMovement();
+		}
+		else if (Input.GetKeyDown(KeyCode.Q))
+		{
+			CycleTurnOption(-1);
+		}
+		else if (Input.GetKeyDown(KeyCode.E))
+		{
+			CycleTurnOption(1);
+		}
+	}
+
+	private void MouseControll()
+	{
+		Debug.Log("MouseControll() running");
+		if (!Input.GetMouseButtonDown(0))
+			return;
+
+		Debug.Log("Left click detected");
+		Debug.Log("Mouse screen position: " + Input.mousePosition);
+		Vector3 mouseWorldPosition = mainCamera.ScreenToWorldPoint(Input.mousePosition);
+		mouseWorldPosition.z = 0;
+		Debug.Log("Mouse world position: " + mouseWorldPosition);
+		Tile clickedTile = map.OrderBy(x => Vector3.Distance(x.transform.position.Vector2(), mouseWorldPosition.Vector2())).First();
+		Debug.Log("Nearest tile found: " + (clickedTile != null));
+		if (clickedTile != null)
+			Debug.Log("Nearest tile position: " + clickedTile.transform.position);
+		if (Vector3.Distance(clickedTile.transform.position.Vector2(), mouseWorldPosition.Vector2()) > mouseTileSelectDistance)
+			return;
+
+		SetCursorTile(clickedTile);
+		Debug.Log("Calling HandleSelectionAndMovement() from mouse input");
+		HandleSelectionAndMovement();
+	}
+
+	private void HandleSelectionAndMovement()
+	{
+		if (currentTurnStep == UnitTurnStep.ChooseOption)
+		{
+			ConfirmCurrentOption();
+			return;
+		}
+		else if (currentTurnStep == UnitTurnStep.SelectUnit)
+		{
+			if (players.Where(x => x.transform.position.x == currentTile.transform.position.x && x.transform.position.y == currentTile.transform.position.y).Count() > 0)
 			{
-				if (players.Where(x => x.currentTile() == currentTile).Count() > 0)
-				{
-					currentTarget = players.Where(x => x.currentTile() == currentTile).First();
-					StartCoroutine(Attacking());
-				}
-				else
-				{
-					Debug.Log("Invalid Tile!");
-				}
+				currentPlayer = players.Where(x => x.transform.position.x == currentTile.transform.position.x && x.transform.position.y == currentTile.transform.position.y).First();
+				previousTile = currentTile;
+				originTile = currentTile;
+				currentTurnStep = UnitTurnStep.ChooseOption;
+				selectedOptionIndex = 0;
+				Debug.Log("Entered ChooseOption");
 			}
-			else if (previousTile == null)
+			return;
+		}
+
+		if (choosingTarget)
+		{
+			if (players.Where(x => x.currentTile() == currentTile).Count() > 0)
 			{
-				if (players.Where(x => x.transform.position.x == cursor.transform.position.x && x.transform.position.y == cursor.transform.position.y).Count() > 0)
-				{
-					currentPlayer = players.Where(x => x.transform.position.x == cursor.transform.position.x && x.transform.position.y == cursor.transform.position.y).First();
-					previousTile = currentTile;
-					originTile = currentTile;
-				}
+				currentTarget = players.Where(x => x.currentTile() == currentTile).First();
+				StartCoroutine(Attacking());
 			}
-			else if (originTile != currentTile)
+			else
+			{
+				Debug.Log("Invalid Tile!");
+			}
+		}
+		else if (originTile != currentTile && currentTurnStep == UnitTurnStep.MoveSelectTarget)
+		{
+			if (highlightedMovementTiles.Contains(currentTile))
 			{
 				TilesQueueForPlayer = Highlight.FindPath(originTile, currentTile, new List<Tile>());
 				GetMovingDirection();
 			}
+		}
+	}
+
+	private void CycleTurnOption(int direction)
+	{
+		if (currentTurnStep != UnitTurnStep.ChooseOption)
+			return;
+
+		int optionCount = System.Enum.GetValues(typeof(TurnOption)).Length;
+		selectedOptionIndex = (selectedOptionIndex + direction + optionCount) % optionCount;
+		Debug.Log("Cycling options. Selected option: " + ((TurnOption)selectedOptionIndex));
+	}
+
+	private void ConfirmCurrentOption()
+	{
+		TurnOption selectedOption = (TurnOption)selectedOptionIndex;
+		Debug.Log("Confirming option: " + selectedOption);
+		if (selectedOption == TurnOption.Move)
+		{
+			currentTurnStep = UnitTurnStep.MoveSelectTarget;
+			originTile = currentPlayer.currentTile();
+			previousTile = originTile;
+			highlightedMovementTiles = Highlight.Movement(originTile, currentPlayer.movement, new List<Tile>());
+			OnHighlightTiles(highlightedMovementTiles, true);
+		}
+		else if (selectedOption == TurnOption.Attack)
+		{
+			currentTurnStep = UnitTurnStep.ActionSelectTarget;
+			Debug.Log("Attack option selected (placeholder).");
+		}
+		else if (selectedOption == TurnOption.Wait)
+		{
+			currentTurnStep = UnitTurnStep.EndTurn;
 		}
 	}
 
@@ -242,5 +366,11 @@ public class GameManager : MonoBehaviour
 		{
 			tiles[i].Highlight(status);
 		}
+	}
+
+	private void ClearMovementHighlights()
+	{
+		OnHighlightTiles(highlightedMovementTiles, false);
+		highlightedMovementTiles = new List<Tile>();
 	}
 }
