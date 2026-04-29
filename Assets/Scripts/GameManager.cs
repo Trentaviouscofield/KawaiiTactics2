@@ -23,6 +23,13 @@ public class GameManager : MonoBehaviour
 		EndTurn
 	}
 
+	private enum TurnOption
+	{
+		Move,
+		Attack,
+		Wait
+	}
+
 	public static GameManager Instance;
 	public float PlayerMoveSpeed;
 	public int FrameCount;
@@ -49,6 +56,7 @@ public class GameManager : MonoBehaviour
 	public UnitTurnStep currentTurnStep;
 	public bool hasMoved;
 	public bool hasActed;
+	private int selectedOptionIndex;
 
 
 
@@ -63,6 +71,7 @@ public class GameManager : MonoBehaviour
 		currentTurnStep = UnitTurnStep.SelectUnit;
 		hasMoved = false;
 		hasActed = false;
+		selectedOptionIndex = 0;
 	}
 	private void Start()
 	{
@@ -119,12 +128,11 @@ public class GameManager : MonoBehaviour
 				if (TilesQueueForPlayer.Count == 0)
 				{
 					currentTile = previousTile;
-					previousTile = null;
 					ClearMovementHighlights();
 					currentPlayer.MovingAnimation(currentPlayer.faceDirection, currentTile, currentTile);
-					//currentPlayer.HighlightAttack();
-					//choosingTarget = true;
-					currentPlayer = null;
+					hasMoved = true;
+					currentTurnStep = UnitTurnStep.ChooseOption;
+					previousTile = currentPlayer.currentTile();
 				}
 			}
 			if (TilesQueueForPlayer.Count > 0) currentPlayer.MovingAnimation(currentPlayer.faceDirection, previousTile, TilesQueueForPlayer[0]);
@@ -232,6 +240,14 @@ public class GameManager : MonoBehaviour
 		{
 			HandleSelectionAndMovement();
 		}
+		else if (Input.GetKeyDown(KeyCode.Q))
+		{
+			CycleTurnOption(-1);
+		}
+		else if (Input.GetKeyDown(KeyCode.E))
+		{
+			CycleTurnOption(1);
+		}
 	}
 
 	private void MouseControll()
@@ -259,6 +275,12 @@ public class GameManager : MonoBehaviour
 
 	private void HandleSelectionAndMovement()
 	{
+		if (currentTurnStep == UnitTurnStep.ChooseOption)
+		{
+			ConfirmCurrentOption();
+			return;
+		}
+
 		if (choosingTarget)
 		{
 			if (players.Where(x => x.currentTile() == currentTile).Count() > 0)
@@ -271,24 +293,56 @@ public class GameManager : MonoBehaviour
 				Debug.Log("Invalid Tile!");
 			}
 		}
-		else if (previousTile == null)
+		else if (previousTile == null && currentTurnStep == UnitTurnStep.SelectUnit)
 		{
 			if (players.Where(x => x.transform.position.x == currentTile.transform.position.x && x.transform.position.y == currentTile.transform.position.y).Count() > 0)
 			{
 				currentPlayer = players.Where(x => x.transform.position.x == currentTile.transform.position.x && x.transform.position.y == currentTile.transform.position.y).First();
 				previousTile = currentTile;
 				originTile = currentTile;
-				highlightedMovementTiles = Highlight.Movement(originTile, currentPlayer.movement, new List<Tile>());
-				OnHighlightTiles(highlightedMovementTiles, true);
+				currentTurnStep = UnitTurnStep.ChooseOption;
+				selectedOptionIndex = 0;
 			}
 		}
-		else if (originTile != currentTile)
+		else if (originTile != currentTile && currentTurnStep == UnitTurnStep.MoveSelectTarget)
 		{
 			if (highlightedMovementTiles.Contains(currentTile))
 			{
 				TilesQueueForPlayer = Highlight.FindPath(originTile, currentTile, new List<Tile>());
 				GetMovingDirection();
 			}
+		}
+	}
+
+	private void CycleTurnOption(int direction)
+	{
+		if (currentTurnStep != UnitTurnStep.ChooseOption)
+			return;
+
+		int optionCount = System.Enum.GetValues(typeof(TurnOption)).Length;
+		selectedOptionIndex = (selectedOptionIndex + direction + optionCount) % optionCount;
+		Debug.Log("Selected option: " + ((TurnOption)selectedOptionIndex));
+	}
+
+	private void ConfirmCurrentOption()
+	{
+		TurnOption selectedOption = (TurnOption)selectedOptionIndex;
+		if (selectedOption == TurnOption.Move)
+		{
+			currentTurnStep = UnitTurnStep.MoveSelectTarget;
+			originTile = currentPlayer.currentTile();
+			previousTile = originTile;
+			highlightedMovementTiles = Highlight.Movement(originTile, currentPlayer.movement, new List<Tile>());
+			OnHighlightTiles(highlightedMovementTiles, true);
+		}
+		else if (selectedOption == TurnOption.Attack)
+		{
+			currentTurnStep = UnitTurnStep.ActionSelectTarget;
+			Debug.Log("Attack option selected (placeholder).");
+		}
+		else if (selectedOption == TurnOption.Wait)
+		{
+			currentTurnStep = UnitTurnStep.EndTurn;
 		}
 	}
 
