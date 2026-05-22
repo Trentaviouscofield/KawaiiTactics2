@@ -58,6 +58,7 @@ public class GameManager : MonoBehaviour
 	public bool hasActed;
 	private int selectedOptionIndex;
 	private int chooseOptionEnteredFrame = -1;
+	private bool movementStarted;
 
 
 	private void Awake()
@@ -71,6 +72,7 @@ public class GameManager : MonoBehaviour
 		currentTurnStep = UnitTurnStep.SelectUnit;
 		hasMoved = false;
 		hasActed = false;
+		movementStarted = false;
 		selectedOptionIndex = 0;
 
 	}
@@ -132,7 +134,12 @@ public class GameManager : MonoBehaviour
 					ClearMovementHighlights();
 					currentPlayer.MovingAnimation(currentPlayer.faceDirection, currentTile, currentTile);
 					hasMoved = true;
-					currentTurnStep = UnitTurnStep.ChooseFacing;
+						if (movementStarted && currentTurnStep == UnitTurnStep.MoveSelectTarget)
+						{
+							Debug.Log("Movement finished. Choose Facing");
+							currentTurnStep = UnitTurnStep.ChooseFacing;
+							movementStarted = false;
+						}
 					previousTile = currentPlayer.currentTile();
 				}
 			}
@@ -346,8 +353,17 @@ public class GameManager : MonoBehaviour
 		{
 			if (highlightedMovementTiles.Contains(currentTile))
 			{
+				Debug.Log("Move target selected");
 				TilesQueueForPlayer = Highlight.FindPath(originTile, currentTile, new List<Tile>());
-				GetMovingDirection();
+				if (TilesQueueForPlayer.Count > 0)
+				{
+					Debug.Log("Movement started");
+					movementStarted = true;
+				}
+				if (TilesQueueForPlayer.Count > 1)
+				{
+					GetMovingDirection();
+				}
 			}
 		}
 	}
@@ -368,6 +384,7 @@ public class GameManager : MonoBehaviour
 		Debug.Log("Confirming option: " + selectedOption);
 		if (selectedOption == TurnOption.Move)
 		{
+			movementStarted = false;
 			currentTurnStep = UnitTurnStep.MoveSelectTarget;
 			originTile = currentPlayer.currentTile();
 			previousTile = originTile;
@@ -405,6 +422,7 @@ public class GameManager : MonoBehaviour
 		hasMoved = false;
 		hasActed = false;
 		selectedOptionIndex = 0;
+		movementStarted = false;
 		currentTurnStep = UnitTurnStep.SelectUnit;
 	}
 
