@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.IO;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class GameManager : MonoBehaviour
 {
@@ -57,7 +58,12 @@ public class GameManager : MonoBehaviour
 	public bool hasMoved;
 	public bool hasActed;
 	private int selectedOptionIndex;
-
+	private Canvas turnOptionCanvas;
+	private RectTransform turnOptionPanel;
+	private readonly List<Text> turnOptionTexts = new List<Text>();
+	private readonly Color turnOptionNormalColor = Color.white;
+	private readonly Color turnOptionSelectedColor = Color.yellow;
+	private int chooseOptionEnteredFrame = -1;
 
 
 	private void Awake()
@@ -72,6 +78,9 @@ public class GameManager : MonoBehaviour
 		hasMoved = false;
 		hasActed = false;
 		selectedOptionIndex = 0;
+
+		CreateTurnOptionUI();
+		UpdateTurnOptionUI();
 	}
 	private void Start()
 	{
@@ -100,6 +109,7 @@ public class GameManager : MonoBehaviour
 
 		KeyControll();
 		MouseControll();
+		UpdateTurnOptionUI();
 
 		IncreateFrameCount();
 	}
@@ -277,6 +287,9 @@ public class GameManager : MonoBehaviour
 	{
 		if (currentTurnStep == UnitTurnStep.ChooseOption)
 		{
+			if (chooseOptionEnteredFrame == FrameCount)
+				return;
+
 			ConfirmCurrentOption();
 			return;
 		}
@@ -285,11 +298,12 @@ public class GameManager : MonoBehaviour
 			if (players.Where(x => x.transform.position.x == currentTile.transform.position.x && x.transform.position.y == currentTile.transform.position.y).Count() > 0)
 			{
 				currentPlayer = players.Where(x => x.transform.position.x == currentTile.transform.position.x && x.transform.position.y == currentTile.transform.position.y).First();
-				previousTile = currentTile;
-				originTile = currentTile;
-				currentTurnStep = UnitTurnStep.ChooseOption;
-				selectedOptionIndex = 0;
-				Debug.Log("Entered ChooseOption");
+					previousTile = currentTile;
+					originTile = currentTile;
+					currentTurnStep = UnitTurnStep.ChooseOption;
+					selectedOptionIndex = 0;
+					chooseOptionEnteredFrame = FrameCount;
+					Debug.Log("Entered ChooseOption. Selected option: Move");
 			}
 			return;
 		}
@@ -346,6 +360,65 @@ public class GameManager : MonoBehaviour
 		else if (selectedOption == TurnOption.Wait)
 		{
 			currentTurnStep = UnitTurnStep.EndTurn;
+		}
+	}
+
+
+
+	private void CreateTurnOptionUI()
+	{
+		GameObject canvasObject = new GameObject("TurnOptionCanvas");
+		turnOptionCanvas = canvasObject.AddComponent<Canvas>();
+		turnOptionCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
+		canvasObject.AddComponent<CanvasScaler>();
+		canvasObject.AddComponent<GraphicRaycaster>();
+
+		GameObject panelObject = new GameObject("TurnOptionPanel");
+		panelObject.transform.SetParent(canvasObject.transform, false);
+		turnOptionPanel = panelObject.AddComponent<RectTransform>();
+		turnOptionPanel.anchorMin = new Vector2(0f, 1f);
+		turnOptionPanel.anchorMax = new Vector2(0f, 1f);
+		turnOptionPanel.pivot = new Vector2(0f, 1f);
+		turnOptionPanel.anchoredPosition = new Vector2(20f, -20f);
+		turnOptionPanel.sizeDelta = new Vector2(180f, 120f);
+
+		VerticalLayoutGroup layoutGroup = panelObject.AddComponent<VerticalLayoutGroup>();
+		layoutGroup.childAlignment = TextAnchor.UpperLeft;
+		layoutGroup.childControlHeight = false;
+		layoutGroup.childControlWidth = false;
+		layoutGroup.childForceExpandHeight = false;
+		layoutGroup.childForceExpandWidth = false;
+		layoutGroup.spacing = 4f;
+
+		foreach (TurnOption option in System.Enum.GetValues(typeof(TurnOption)))
+		{
+			GameObject optionTextObject = new GameObject(option + "Text");
+			optionTextObject.transform.SetParent(panelObject.transform, false);
+			Text optionText = optionTextObject.AddComponent<Text>();
+			optionText.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+			optionText.fontSize = 24;
+			optionText.alignment = TextAnchor.MiddleLeft;
+			optionText.text = option.ToString();
+			optionText.color = turnOptionNormalColor;
+			RectTransform optionRect = optionTextObject.GetComponent<RectTransform>();
+			optionRect.sizeDelta = new Vector2(160f, 30f);
+			turnOptionTexts.Add(optionText);
+		}
+	}
+
+	private void UpdateTurnOptionUI()
+	{
+		if (turnOptionCanvas == null)
+			return;
+
+		bool showMenu = currentTurnStep == UnitTurnStep.ChooseOption;
+		turnOptionCanvas.enabled = showMenu;
+		if (!showMenu)
+			return;
+
+		for (int i = 0; i < turnOptionTexts.Count; i++)
+		{
+			turnOptionTexts[i].color = i == selectedOptionIndex ? turnOptionSelectedColor : turnOptionNormalColor;
 		}
 	}
 
