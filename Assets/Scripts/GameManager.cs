@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.IO;
 using UnityEngine;
-using UnityEngine.UI;
 
 public class GameManager : MonoBehaviour
 {
@@ -58,11 +57,6 @@ public class GameManager : MonoBehaviour
 	public bool hasMoved;
 	public bool hasActed;
 	private int selectedOptionIndex;
-	private Canvas turnOptionCanvas;
-	private RectTransform turnOptionPanel;
-	private readonly List<Text> turnOptionTexts = new List<Text>();
-	private readonly Color turnOptionNormalColor = Color.white;
-	private readonly Color turnOptionSelectedColor = Color.yellow;
 	private int chooseOptionEnteredFrame = -1;
 
 
@@ -79,8 +73,6 @@ public class GameManager : MonoBehaviour
 		hasActed = false;
 		selectedOptionIndex = 0;
 
-		CreateTurnOptionUI();
-		UpdateTurnOptionUI();
 	}
 	private void Start()
 	{
@@ -109,7 +101,6 @@ public class GameManager : MonoBehaviour
 
 		KeyControll();
 		MouseControll();
-		UpdateTurnOptionUI();
 
 		IncreateFrameCount();
 	}
@@ -365,61 +356,19 @@ public class GameManager : MonoBehaviour
 
 
 
-	private void CreateTurnOptionUI()
+
+	private void OnGUI()
 	{
-		GameObject canvasObject = new GameObject("TurnOptionCanvas");
-		turnOptionCanvas = canvasObject.AddComponent<Canvas>();
-		turnOptionCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
-		canvasObject.AddComponent<CanvasScaler>();
-		canvasObject.AddComponent<GraphicRaycaster>();
-
-		GameObject panelObject = new GameObject("TurnOptionPanel");
-		panelObject.transform.SetParent(canvasObject.transform, false);
-		turnOptionPanel = panelObject.AddComponent<RectTransform>();
-		turnOptionPanel.anchorMin = new Vector2(0f, 1f);
-		turnOptionPanel.anchorMax = new Vector2(0f, 1f);
-		turnOptionPanel.pivot = new Vector2(0f, 1f);
-		turnOptionPanel.anchoredPosition = new Vector2(20f, -20f);
-		turnOptionPanel.sizeDelta = new Vector2(180f, 120f);
-
-		VerticalLayoutGroup layoutGroup = panelObject.AddComponent<VerticalLayoutGroup>();
-		layoutGroup.childAlignment = TextAnchor.UpperLeft;
-		layoutGroup.childControlHeight = false;
-		layoutGroup.childControlWidth = false;
-		layoutGroup.childForceExpandHeight = false;
-		layoutGroup.childForceExpandWidth = false;
-		layoutGroup.spacing = 4f;
-
-		foreach (TurnOption option in System.Enum.GetValues(typeof(TurnOption)))
-		{
-			GameObject optionTextObject = new GameObject(option + "Text");
-			optionTextObject.transform.SetParent(panelObject.transform, false);
-			Text optionText = optionTextObject.AddComponent<Text>();
-			optionText.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
-			optionText.fontSize = 24;
-			optionText.alignment = TextAnchor.MiddleLeft;
-			optionText.text = option.ToString();
-			optionText.color = turnOptionNormalColor;
-			RectTransform optionRect = optionTextObject.GetComponent<RectTransform>();
-			optionRect.sizeDelta = new Vector2(160f, 30f);
-			turnOptionTexts.Add(optionText);
-		}
-	}
-
-	private void UpdateTurnOptionUI()
-	{
-		if (turnOptionCanvas == null)
+		if (currentTurnStep != UnitTurnStep.ChooseOption)
 			return;
 
-		bool showMenu = currentTurnStep == UnitTurnStep.ChooseOption;
-		turnOptionCanvas.enabled = showMenu;
-		if (!showMenu)
-			return;
+		TurnOption selectedOption = (TurnOption)selectedOptionIndex;
+		string menuText = (selectedOption == TurnOption.Move ? "> " : "  ") + "Move\n"
+			+ (selectedOption == TurnOption.Attack ? "> " : "  ") + "Attack\n"
+			+ (selectedOption == TurnOption.Wait ? "> " : "  ") + "Wait";
 
-		for (int i = 0; i < turnOptionTexts.Count; i++)
-		{
-			turnOptionTexts[i].color = i == selectedOptionIndex ? turnOptionSelectedColor : turnOptionNormalColor;
-		}
+		GUI.Box(new Rect(10f, 10f, 180f, 90f), "Command");
+		GUI.Label(new Rect(20f, 35f, 160f, 60f), menuText);
 	}
 
 	IEnumerator Attacking()
