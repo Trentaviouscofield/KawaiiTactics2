@@ -57,7 +57,7 @@ public class GameManager : MonoBehaviour
 	public bool hasMoved;
 	public bool hasActed;
 	private int selectedOptionIndex;
-
+	private int chooseOptionEnteredFrame = -1;
 
 
 	private void Awake()
@@ -72,6 +72,7 @@ public class GameManager : MonoBehaviour
 		hasMoved = false;
 		hasActed = false;
 		selectedOptionIndex = 0;
+
 	}
 	private void Start()
 	{
@@ -277,6 +278,9 @@ public class GameManager : MonoBehaviour
 	{
 		if (currentTurnStep == UnitTurnStep.ChooseOption)
 		{
+			if (chooseOptionEnteredFrame == FrameCount)
+				return;
+
 			ConfirmCurrentOption();
 			return;
 		}
@@ -285,11 +289,12 @@ public class GameManager : MonoBehaviour
 			if (players.Where(x => x.transform.position.x == currentTile.transform.position.x && x.transform.position.y == currentTile.transform.position.y).Count() > 0)
 			{
 				currentPlayer = players.Where(x => x.transform.position.x == currentTile.transform.position.x && x.transform.position.y == currentTile.transform.position.y).First();
-				previousTile = currentTile;
-				originTile = currentTile;
-				currentTurnStep = UnitTurnStep.ChooseOption;
-				selectedOptionIndex = 0;
-				Debug.Log("Entered ChooseOption");
+					previousTile = currentTile;
+					originTile = currentTile;
+					currentTurnStep = UnitTurnStep.ChooseOption;
+					selectedOptionIndex = 0;
+					chooseOptionEnteredFrame = FrameCount;
+					Debug.Log("Entered ChooseOption. Selected option: Move");
 			}
 			return;
 		}
@@ -347,6 +352,23 @@ public class GameManager : MonoBehaviour
 		{
 			currentTurnStep = UnitTurnStep.EndTurn;
 		}
+	}
+
+
+
+
+	private void OnGUI()
+	{
+		if (currentTurnStep != UnitTurnStep.ChooseOption)
+			return;
+
+		TurnOption selectedOption = (TurnOption)selectedOptionIndex;
+		string menuText = (selectedOption == TurnOption.Move ? "> " : "  ") + "Move\n"
+			+ (selectedOption == TurnOption.Attack ? "> " : "  ") + "Attack\n"
+			+ (selectedOption == TurnOption.Wait ? "> " : "  ") + "Wait";
+
+		GUI.Box(new Rect(10f, 10f, 180f, 90f), "Command");
+		GUI.Label(new Rect(20f, 35f, 160f, 60f), menuText);
 	}
 
 	IEnumerator Attacking()
