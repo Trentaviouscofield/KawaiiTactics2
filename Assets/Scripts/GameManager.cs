@@ -63,6 +63,7 @@ public class GameManager : MonoBehaviour
 	private readonly List<Text> turnOptionTexts = new List<Text>();
 	private readonly Color turnOptionNormalColor = Color.white;
 	private readonly Color turnOptionSelectedColor = Color.yellow;
+	private int chooseOptionEnteredFrame = -1;
 
 
 	private void Awake()
@@ -286,6 +287,9 @@ public class GameManager : MonoBehaviour
 	{
 		if (currentTurnStep == UnitTurnStep.ChooseOption)
 		{
+			if (chooseOptionEnteredFrame == FrameCount)
+				return;
+
 			ConfirmCurrentOption();
 			return;
 		}
@@ -294,11 +298,12 @@ public class GameManager : MonoBehaviour
 			if (players.Where(x => x.transform.position.x == currentTile.transform.position.x && x.transform.position.y == currentTile.transform.position.y).Count() > 0)
 			{
 				currentPlayer = players.Where(x => x.transform.position.x == currentTile.transform.position.x && x.transform.position.y == currentTile.transform.position.y).First();
-				previousTile = currentTile;
-				originTile = currentTile;
-				currentTurnStep = UnitTurnStep.ChooseOption;
-				selectedOptionIndex = 0;
-				Debug.Log("Entered ChooseOption");
+					previousTile = currentTile;
+					originTile = currentTile;
+					currentTurnStep = UnitTurnStep.ChooseOption;
+					selectedOptionIndex = 0;
+					chooseOptionEnteredFrame = FrameCount;
+					Debug.Log("Entered ChooseOption. Selected option: Move");
 			}
 			return;
 		}
